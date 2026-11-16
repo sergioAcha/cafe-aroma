@@ -1,0 +1,25 @@
+import { Router } from 'express';
+import { getAbout, getContactInfo, getHome, getPrices, getServices, getSpecialties } from '../controllers/content.controller.js';
+import { createContact } from '../controllers/contact.controller.js';
+import { sendChat } from '../controllers/chat.controller.js';
+import { query } from '../config/db.js';
+
+const router = Router();
+router.get('/health', async (_req, res) => {
+  try {
+    await query('SELECT 1');
+    res.json({ status: 'ok', service: 'cafe-aroma-api', database: 'ok' });
+  } catch (error) {
+    console.error(`Health check de MySQL falló: ${error.message}`);
+    res.status(503).json({ status: 'error', service: 'cafe-aroma-api', database: 'unavailable' });
+  }
+});
+router.get('/home', getHome);
+router.get('/services', getServices);
+router.get('/specialties', getSpecialties);
+router.get('/about', getAbout);
+router.get('/prices', getPrices);
+router.get('/contact-info', getContactInfo);
+router.post('/contact', createContact);
+router.post('/chat', sendChat);
+export default router;
