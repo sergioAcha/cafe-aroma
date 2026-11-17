@@ -2,6 +2,12 @@ import { getCafeInfo, getSiteContent, listPrices, listServices, listSpecialties 
 
 const systemPrompt = `Eres el asistente virtual de una cafetería. Responde en español, de forma cálida, breve y clara. Usa únicamente la información incluida desde la base de datos. No inventes productos, ingredientes, precios, horarios, ubicación ni disponibilidad. Si la información no está en la base de datos, indícalo y recomienda consultar directamente al equipo. Para preguntas de alergias o ingredientes, recomienda confirmarlo con el equipo de la cafetería.`;
 
+function getChatModel() {
+  const model = (process.env.OLLAMA_MODEL || 'gemma3').trim();
+  if (!model) return 'gemma3:latest';
+  return model.includes(':') ? model : `${model}:latest`;
+}
+
 async function loadBusinessContext() {
   const [infoRows, menu, features, prices, content] = await Promise.all([
     getCafeInfo(),
@@ -32,13 +38,14 @@ export async function sendChat(req, res) {
     return res.status(503).json({ error: 'No se pudo leer la información de MySQL. Verifica XAMPP y la configuración de la base de datos.' });
   }
 
+  const model = getChatModel();
   const url = `${(process.env.OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '')}/api/chat`;
   try {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: process.env.OLLAMA_MODEL || 'gemma3',
+        model,
         stream: false,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -49,16 +56,20 @@ export async function sendChat(req, res) {
       }),
       signal: AbortSignal.timeout(90000)
     });
-    if (!response.ok) throw new Error(`Ollama respondió ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `Ollama respondió ${response.status}`);
+    }
     const data = await response.json();
     const reply = data.message?.content?.trim();
     if (!reply) throw new Error('Ollama devolvió una respuesta vacía');
-    return res.json({ reply, source: 'ollama', model: process.env.OLLAMA_MODEL || 'gemma3' });
+    return res.json({ reply, source: 'ollama', model });
   } catch (error) {
     console.warn(`Chatbot sin Ollama: ${error.message}`);
     return res.json({
       reply: `En este momento el asistente no está disponible. Puedes contactar directamente a ${context.business.name}.`,
-      source: 'fallback'
+      source: 'fallback',
+      model
     });
   }
 }

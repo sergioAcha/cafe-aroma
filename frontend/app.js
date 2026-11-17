@@ -1,7 +1,8 @@
 const API = '/api';
+const CONTENT_REFRESH_MS = 15000;
 
 async function getData(route) {
-  const response = await fetch(`${API}/${route}`);
+  const response = await fetch(`${API}/${route}?t=${Date.now()}`, { cache: 'no-store' });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || `No se pudieron cargar los datos (${route}).`);
   return result;
@@ -172,28 +173,33 @@ function renderHome(home, about) {
   setText('#chat-disclaimer', home.chat_disclaimer);
 }
 
+async function renderContent() {
+  const [home, services, specialties, about, prices, contact] = await Promise.all([
+    getData('home'),
+    getData('services'),
+    getData('specialties'),
+    getData('about'),
+    getData('prices'),
+    getData('contact-info')
+  ]);
+  renderHome(home, about);
+  setText('#about-history', about.history);
+  renderCards(services, '#services-grid', 'service');
+  renderCards(specialties, '#specialties-grid', 'specialty');
+  renderPrices(prices);
+  renderContact(contact);
+  document.querySelector('#year').textContent = new Date().getFullYear();
+}
+
 async function init() {
   try {
-    const [home, services, specialties, about, prices, contact] = await Promise.all([
-      getData('home'),
-      getData('services'),
-      getData('specialties'),
-      getData('about'),
-      getData('prices'),
-      getData('contact-info')
-    ]);
-    renderHome(home, about);
-    setText('#about-history', about.history);
-    renderCards(services, '#services-grid', 'service');
-    renderCards(specialties, '#specialties-grid', 'specialty');
-    renderPrices(prices);
-    renderContact(contact);
-    document.querySelector('#year').textContent = new Date().getFullYear();
+    await renderContent();
     document.querySelector('#site-loading').hidden = true;
     document.querySelector('header').hidden = false;
     document.querySelector('main').hidden = false;
     document.querySelector('footer').hidden = false;
     document.querySelector('#chat-toggle').hidden = false;
+    document.querySelector('#site-error').hidden = true;
   } catch (error) {
     console.error('No se pudo cargar el contenido desde MySQL:', error);
     document.querySelector('#site-loading').hidden = true;
@@ -203,7 +209,24 @@ async function init() {
   }
 }
 
+let refreshTimer = null;
+function startContentRefresh() {
+  if (refreshTimer) return;
+  refreshTimer = window.setInterval(async () => {
+    try {
+      await renderContent();
+      document.querySelector('#site-error').hidden = true;
+    } catch (error) {
+      console.warn('No se pudo refrescar el contenido desde MySQL:', error);
+    }
+  }, CONTENT_REFRESH_MS);
+}
+
 init();
+startContentRefresh();
+window.addEventListener('focus', () => {
+  renderContent().catch((error) => console.warn('No se pudo actualizar el contenido desde MySQL:', error));
+});
 
 const nav = document.querySelector('.nav');
 const menuToggle = document.querySelector('.menu-toggle');

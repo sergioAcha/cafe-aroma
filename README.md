@@ -10,7 +10,7 @@ Sitio web para una cafetería con frontend estático, API en Node.js, MariaDB/My
 4. En `backend/`, ejecuta `npm install` y `npm run dev`.
 5. Abre `http://localhost:3000`.
 
-La app consulta textos, imágenes (sus URLs), carta, precios e información del negocio en la base. No muestra datos de demostración si falla la conexión: presenta un error. El formulario guarda mensajes en `contacts`. Para usar el chat también se necesita Ollama y el modelo `gemma3`; sus respuestas se basan en datos de la base.
+La app consulta textos, imágenes (sus URLs), carta, precios e información del negocio en la base. Los cambios se reflejan automáticamente en el sitio (como máximo en 15 segundos). No muestra datos de demostración si falla la conexión: presenta un error. El formulario guarda mensajes en `contacts`. Para usar el chat también se necesita Ollama ejecutándose y el modelo `gemma3` (`ollama pull gemma3`); sus respuestas se basan en datos de la base. El endpoint `/api/health` informa el estado de MySQL, Ollama y la disponibilidad del modelo configurado.
 
 **Seguridad:** usar `root` es solo para desarrollo local con XAMPP. En un entorno compartido o publicado, configura un usuario de aplicación con permisos limitados.
 
